@@ -1,128 +1,43 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART Karaoke Launcher</title>
+    <title>KARAOKE SCREEN</title>
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
     <style>
-        :root { --blue: #0077ff; --dark: #0a0a0c; --card: #1a1a1d; }
-        body { background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; }
-        .header { padding: 20px; background: #000; border-bottom: 2px solid var(--blue); }
-        .player-section { padding: 20px; }
-        iframe#main-player { width: 100%; max-width: 800px; height: 450px; border-radius: 15px; border: 1px solid #333; }
-        
-        /* Поиск */
-        .search-area { padding: 20px; background: var(--card); margin: 10px auto; max-width: 600px; border-radius: 15px; }
-        input { width: 70%; padding: 12px; border-radius: 8px; border: none; outline: none; }
-        .btn-search { background: var(--blue); color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        
-        /* Очередь */
-        .queue-item { display: flex; justify-content: space-between; align-items: center; background: var(--card); margin: 10px auto; padding: 15px; max-width: 600px; border-radius: 10px; border-left: 5px solid var(--blue); }
-        .btn-play { background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        .btn-del { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
-
-        /* Окно выбора (Поиск) */
-        #search-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; }
-        .close-search { padding: 15px; background: red; color: white; cursor: pointer; font-weight: bold; }
-        #search-iframe { flex-grow: 1; border: none; }
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
+        iframe { width: 80%; height: 500px; border: 3px solid #0f0; margin-top: 20px; }
+        .queue { margin-top: 30px; font-size: 20px; }
+        .item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: center; gap: 20px; }
     </style>
 </head>
 <body>
+    <h1>ЭКРАН КАРАОКЕ</h1>
+    <iframe id="video" src="" allow="autoplay"></iframe>
+    <div class="queue" id="list"></div>
 
-<div class="header">
-    <h1>🎤 SMART KARAOKE</h1>
-</div>
+    <script>
+        const firebaseConfig = { /* ВСТАВЬ СВОЙ КОНФИГ ИЗ FIREBASE */ };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-<div class="player-section">
-    <iframe id="main-player" src="" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-</div>
+        db.ref('queue').on('value', snap => {
+            const list = document.getElementById('list');
+            list.innerHTML = '<h2>ОЧЕРЕДЬ:</h2>';
+            const data = snap.val();
+            if (data) {
+                Object.keys(data).forEach(id => {
+                    list.innerHTML += `<div class="item">
+                        <span>${data[id].title}</span>
+                        <button onclick="play('${data[id].url}')">ПЕТЬ</button>
+                        <button onclick="del('${id}')">❌</button>
+                    </div>`;
+                });
+            }
+        });
 
-<div class="search-area">
-    <input type="text" id="song-query" placeholder="Введите название песни...">
-    <button class="btn-search" onclick="openSearch()">НАЙТИ</button>
-    <p style="font-size: 12px; color: #888; margin-top: 10px;">Нажми найти, выбери видео и скопируй его адрес</p>
-</div>
-
-<div id="queue-list"></div>
-
-<!-- Окно встроенного поиска ВК -->
-<div id="search-overlay">
-    <div class="close-search" onclick="closeSearch()">❌ ЗАКРЫТЬ ПОИСК И ВЕРНУТЬСЯ</div>
-    <iframe id="search-iframe" src=""></iframe>
-</div>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBorratezI1ExpJ3j7euvgNuJHGBzvEMqk",
-        authDomain: "my-caraoke-bar.firebaseapp.com",
-        databaseURL: "https://my-caraoke-bar-default-rtdb.firebaseio.com",
-        projectId: "my-caraoke-bar",
-        storageBucket: "my-caraoke-bar.firebasestorage.app",
-        messagingSenderId: "962264196959",
-        appId: "1:962264196959:web:d3db4e060adf0e746f38ea"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Открытие поиска
-    function openSearch() {
-        const query = document.getElementById('song-query').value;
-        if (!query) return alert('Сначала введи название!');
-        
-        const searchUrl = `https://vk.com{encodeURIComponent(query + ' караоке')}`;
-        document.getElementById('search-iframe').src = searchUrl;
-        document.getElementById('search-overlay').style.display = 'flex';
-    }
-
-    function closeSearch() {
-        document.getElementById('search-overlay').style.display = 'none';
-        // После закрытия просим вставить ссылку (автоматически вытащить ссылку из чужого iframe нельзя по безопасности)
-        const url = prompt("Вставь ссылку на выбранное видео:");
-        if (url) {
-            db.ref('karaoke_queue').push({
-                url: url,
-                title: "Новый заказ",
-                time: Date.now()
-            });
-        }
-    }
-
-    // Загрузка очереди
-    db.ref('karaoke_queue').on('value', (snap) => {
-        const list = document.getElementById('queue-list');
-        list.innerHTML = '';
-        const data = snap.val();
-        if (data) {
-            Object.keys(data).forEach(id => {
-                const song = data[id];
-                list.innerHTML += `
-                    <div class="queue-item">
-                        <span>🎵 ${song.url.substring(0, 30)}...</span>
-                        <div>
-                            <button class="btn-play" onclick="play('${song.url}')">ПЕТЬ</button>
-                            <button class="btn-del" onclick="del('${id}')">❌</button>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-    });
-
-    function play(url) {
-        // Конвертация ссылки ВК в Embed
-        let embed = url;
-        if (url.includes('video')) {
-            const match = url.match(/video(-?\d+)_(\d+)/);
-            if (match) embed = `https://vk.com{match[1]}&id=${match[2]}&hash=0`;
-        }
-        document.getElementById('main-player').src = embed;
-    }
-
-    function del(id) { db.ref('karaoke_queue/' + id).remove(); }
-</script>
-
+        function play(url) { document.getElementById('video').src = url; }
+        function del(id) { db.ref('queue/' + id).remove(); }
+    </script>
 </body>
 </html>
