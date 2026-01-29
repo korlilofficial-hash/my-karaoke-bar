@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KARAOKE SCREEN</title>
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
+        iframe { width: 80%; height: 500px; border: 3px solid #0f0; margin-top: 20px; }
+        .queue { margin-top: 30px; font-size: 20px; }
+        .item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: center; gap: 20px; }
+    </style>
+</head>
+<body>
+    <h1>ЭКРАН КАРАОКЕ</h1>
+    <iframe id="video" src="" allow="autoplay"></iframe>
+    <div class="queue" id="list"></div>
+
+    <script>
+        const firebaseConfig = { /* ВСТАВЬ СВОЙ КОНФИГ ИЗ FIREBASE */ };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        db.ref('queue').on('value', snap => {
+            const list = document.getElementById('list');
+            list.innerHTML = '<h2>ОЧЕРЕДЬ:</h2>';
+            const data = snap.val();
+            if (data) {
+                Object.keys(data).forEach(id => {
+                    list.innerHTML += `<div class="item">
+                        <span>${data[id].title}</span>
+                        <button onclick="play('${data[id].url}')">ПЕТЬ</button>
+                        <button onclick="del('${id}')">❌</button>
+                    </div>`;
+                });
+            }
+        });
+
+        function play(url) { document.getElementById('video').src = url; }
+        function del(id) { db.ref('queue/' + id).remove(); }
+    </script>
+</body>
+</html>
